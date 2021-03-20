@@ -7,14 +7,30 @@
     npm install --save-dev nodemon (--save-dev is to say this is a "development dependency")
 */
 
+const { response } = require('express')
 const express = require('express')
-const app = express() //Create express application and store in app
+const app = express() //Create express application and store in app const
 const PORT = 8000
 app.listen(PORT)
 console.log("Server is now running on " + PORT)
 
+
+//=====MIDDLWARES=====
+// Functions that handle request and response objects before/after a route is called
+// Can use multiple middlewares, and they are executed in order of being called
+
+const requestLogger = (request, response, next) => {
+  console.log('Method: ' + request.method)
+  console.log('Path: ' + request.path)
+  console.log('Body: ' + request.body) //Called after express.json() middleware, so we have request.body
+  console.log('---')
+  next() //Pass execution to next middleware
+}
+
 app.use(express.json()) //Use "json-parser" middleware 
                         //Adds the "body" property to the request object (i.e request.body)
+app.use(requestLogger)
+//See BELOW for middleware that executes AFTER routes
 
 let notes = [
     {
@@ -78,3 +94,8 @@ app.post("/api/notes/create", (request, response) => {
   else response.status(200).json({status: "error", message: "Note is malformed"})
   
 })
+
+const unknownEndpoint = (req, res) => {
+  res.status(404).send("Unknown endpoint")
+}
+app.use(unknownEndpoint)

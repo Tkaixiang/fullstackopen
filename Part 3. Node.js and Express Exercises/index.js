@@ -1,8 +1,13 @@
 const express = require('express')
+const morgan = require('morgan')
 const app = express()
 const PORT = 8000
 
 app.use(express.json())
+app.use(morgan( (tokens, req, res) => {
+    console.log(req.body)
+    return [tokens.method(req, res), tokens.url(req,res), tokens.status(req, res),tokens.res(req, res, 'content-length')].join(' ')
+}))
 app.listen(PORT)
 console.log("Server is now running on port " + PORT)
 
@@ -82,5 +87,9 @@ app.get('/info', (request, response) => {
     response.send("Phonebook has info for " + phonebook.length + " people. <br><br>Request received on: " + new Date())
 })
 
+const unknownEndpoint = (req, res) => {
+    res.status(404).send("Unknown webpage")
+}
+app.use(unknownEndpoint)
 
 
