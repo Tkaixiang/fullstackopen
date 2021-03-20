@@ -20,7 +20,7 @@ console.log("Server is now running on " + PORT)
 // Functions that handle request and response objects before/after a route is called
 // Can use multiple middlewares, and they are executed in order of being called
 
-const requestLogger = (request, response, next) => {
+const requestLogger = (request, response, next) => { //self-made middleware that just logs stuff
   console.log('Method: ' + request.method)
   console.log('Path: ' + request.path)
   console.log('Body: ' + request.body) //Called after express.json() middleware, so we have request.body
