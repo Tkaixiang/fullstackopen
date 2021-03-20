@@ -1,5 +1,6 @@
 const express = require('express')
 const morgan = require('morgan')
+const cors = require('cors')
 const app = express()
 const PORT = 8000
 
@@ -8,6 +9,7 @@ app.use(morgan( (tokens, req, res) => {
     console.log(req.body)
     return [tokens.method(req, res), tokens.url(req,res), tokens.status(req, res),tokens.res(req, res, 'content-length')].join(' ')
 }))
+app.use(cors)
 app.listen(PORT)
 console.log("Server is now running on port " + PORT)
 

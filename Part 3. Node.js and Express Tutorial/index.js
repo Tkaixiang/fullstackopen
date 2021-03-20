@@ -7,11 +7,12 @@
     npm install --save-dev nodemon (--save-dev is to say this is a "development dependency")
 */
 
-const { response } = require('express')
 const express = require('express')
+const cors = require('cors')
 const app = express() //Create express application and store in app const
 const PORT = 8000
 app.listen(PORT)
+
 console.log("Server is now running on " + PORT)
 
 
@@ -30,6 +31,10 @@ const requestLogger = (request, response, next) => {
 app.use(express.json()) //Use "json-parser" middleware 
                         //Adds the "body" property to the request object (i.e request.body)
 app.use(requestLogger)
+
+//=====CORS=====
+// By default, browsers do not allow resources to be fetched from a seperate origin from the frontend
+app.use(cors)
 //See BELOW for middleware that executes AFTER routes
 
 let notes = [
