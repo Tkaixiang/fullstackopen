@@ -1,17 +1,9 @@
 const express = require('express')
-const morgan = require('morgan')
+const mongoDB = require('mongodb')
+//const morgan = require('morgan')
 const cors = require('cors')
 const app = express()
 const PORT = 8000
-
-app.use(express.json())
-app.use(morgan( (tokens, req, res) => {
-    console.log(req.body)
-    return [tokens.method(req, res), tokens.url(req,res), tokens.status(req, res),tokens.res(req, res, 'content-length')].join(' ')
-}))
-app.use(cors)
-app.listen(PORT)
-console.log("Server is now running on port " + PORT)
 
 let phonebook = [
     {
@@ -36,62 +28,99 @@ let phonebook = [
     }
 ]
 
-app.get('/api/persons', (request, response) => {
-    return response.json(phonebook)
-})
+app.use(express.json())
+//Just prints data from requests
+/*app.use(morgan((tokens, req, res) => {
+    console.log(req.body)
+    return [tokens.method(req, res), tokens.url(req, res), tokens.status(req, res), tokens.res(req, res, 'content-length')].join(' ')
+}))*/
+app.use(cors()) //Add CORS
+app.listen(PORT)
+console.log("Server is now running on port " + PORT)
 
-app.get('/api/persons/:id', (request, response) => {
-    const id = parseInt(request.params.id)
-    const record = phonebook.find(record => record.id === id)
 
-    if (record) response.json(record)
-    else response.status(404).json({status: "error", message: "phonebook with record " + id + " not found."})
-})
+mongoDB.MongoClient.connect("mongodb://localhost:27017", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(async (client) => {
+    const db = client.db("nodeMongoDBTest")
+    const collection = db.collection("phonebook")
+    
+    await collection.deleteMany({}) // returns { n: 4, ok: 1 }
+    await collection.insertMany(phonebook)
 
-app.post('/api/persons/delete', (req, res) => {
-    const contents = req.body
-    if ("id" in contents) {
-        for (let i = 0; i < phonebook.length; i++) {
-            if (phonebook[i].id === parseInt(contents.id)) {
-                phonebook.splice(i, 1) //remove array element at i
-                return res.json({status: "success", message: "deleted phonebook with id " + contents.id})
-            }
+    app.get('/api/persons', async (request, response) => {
+        const records = await collection.find({}, {"projection": {"_id": 0}}).toArray()
+        return response.json(records)
+    })
+
+    app.get('/api/persons/:id', async (request, response) => {
+        const id = parseInt(request.params.id)
+        const record = await collection.findOne({"id": id}, {projection: {"_id": 0}})
+
+        if (record) response.json(record)
+        else response.status(404).json({ status: "error", message: "phonebook with record " + id + " not found." })
+    })
+
+    app.post('/api/persons/delete', async (req, res) => {
+        const contents = req.body
+        if ("id" in contents) {
+            const deleteInfo = await collection.deleteOne({id: parseInt(contents.id)})
+            if (deleteInfo.result.n === 1) return res.json({ status: "success", message: "deleted phonebook with id " + contents.id })
+            else res.json({ status: "error", message: "phonebook with record " + contents.id + " not found." })
         }
-        res.json({status: "error", message: "phonebook with record " + contents.id + " not found."})
-    }
-    else {
-        res.json({status: "error", message: "phonebook with record " + contents.id + " not found."})
-    }
-})
-
-app.post('/api/persons/create', (req, res) => {
-    const contents = req.body
-    if ("name" in contents && "number" in contents) {
-        for (let i = 0; i < phonebook.length; i++) {
-            if (phonebook[i].name === contents.name) return res.json({status: "error", message: "name must be unique"})
+        else {
+            res.json({ status: "error", message: "phonebook with record " + contents.id + " not found." })
         }
-        const id = Math.floor(Math.random() * 99999999) //might have collisions, but owell
-        phonebook.push({
-            id: id,
-            name: contents.name,
-            number: contents.number
-        })
-        res.json({status: "success", message: "successfully created phonebook with id " + id})
+    })
+
+    app.post('/api/persons/create', async (req, res) => {
+        const contents = req.body
+        if ("name" in contents && "number" in contents) {
+            const checkIfExist = await collection.find({"name": contents.name}, {"_id": 0}).count()   
+            if (checkIfExist === 1) return res.json({ status: "error", message: "name must be unique" })
+
+
+            const id = Math.floor(Math.random() * 99999999) //might have collisions, but owell
+
+            await collection.insertOne({
+                id: id,
+                name: contents.name,
+                number: contents.number
+            })
+            res.json({ status: "success", message: "successfully created phonebook with id " + id })
+        }
+        else {
+            res.json({ status: "error", message: "Body malformed. Missing name or number field" })
+        }
+    })
+
+    app.get('/info', async (request, response) => {
+        response.setHeader("Content-Type", "text/html") //technically not required as res.send() automatically sets this when you send a string
+        //also automatically sets to JSON when you send an object in
+        const amount = await collection.find({}).count()
+        response.send("Phonebook has info for " + amount + " people. <br><br>Request received on: " + new Date())
+    })
+
+    //Middleware that executes afterwards
+    const unknownEndpoint = (req, res) => {
+        res.status(404).send("Unknown webpage")
     }
-    else {
-        res.json({status: "error", message: "Body malformed. Missing name or number field"})
-    }
+    app.use(unknownEndpoint)
+
+
+}).catch((err) => {
+    console.log("Connection to database failed")
+    console.log(err)
 })
 
-app.get('/info', (request, response) => {
-    response.setHeader("Content-Type", "text/html") //technically not required as res.send() automatically sets this when you send a string
-                                                    //also automatically sets to JSON when you send an object in
-    response.send("Phonebook has info for " + phonebook.length + " people. <br><br>Request received on: " + new Date())
-})
 
-const unknownEndpoint = (req, res) => {
-    res.status(404).send("Unknown webpage")
-}
-app.use(unknownEndpoint)
+
+
+
+
+
+
+
 
 

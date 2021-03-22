@@ -6,6 +6,8 @@
     "nodemon" is to allow automatic refresh during development(like in React)
     npm install --save-dev nodemon (--save-dev is to say this is a "development dependency")
 */
+//=====MongoDB=====
+// Will not be implementing in tutorial, check mongoTutorial.js for a generic tutorial and exercises for the implementation
 
 const express = require('express')
 const cors = require('cors')
@@ -16,7 +18,7 @@ app.listen(PORT)
 console.log("Server is now running on " + PORT)
 
 
-//=====MIDDLWARES=====
+//=====MIDDLEWARES=====
 // Functions that handle request and response objects before/after a route is called
 // Can use multiple middlewares, and they are executed in order of being called
 
